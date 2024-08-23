@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"time"
 )
 
 type RunFunc func(ctx context.Context) error
@@ -262,27 +261,13 @@ func (c *Container) ServiceNames() []string {
 	return names
 }
 
-func (c *Container) WaitAllStopped() {
-	c.WaitAllStoppedTimeout(0)
-}
-
-// WaitAllStoppedTimeout blocks until all services are stopped or timeout is exceeded
-// calling with timout of 0 will wait forever - better use WaitAllStopped() then.
-// After the timeout is reached, services might still run. Call Container.StopAll() to stop them.
-func (c *Container) WaitAllStoppedTimeout(timeout time.Duration) {
+// WaitAllStopped blocks until all services are stopped or context is canceled.
+// After the context is canceled, services might still run. Call Container.StopAll() to stop them.
+func (c *Container) WaitAllStopped(ctx context.Context) {
 	if c.runCtxCancel == nil {
 		panic("call Container.StartAll() before WaitAllStopped()")
 	}
 
-	var ctx context.Context
-	var cancel context.CancelFunc
-
-	if timeout != 0 {
-		ctx, cancel = context.WithTimeout(context.Background(), timeout)
-
-	} else {
-		ctx, cancel = context.WithCancel(context.Background())
-	}
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.runContexts))
 	for k := range c.runContexts {
@@ -294,13 +279,17 @@ func (c *Container) WaitAllStoppedTimeout(timeout time.Duration) {
 		}()
 	}
 
+	doneChan := make(chan struct{})
 	// wait till all services are stopped
 	go func() {
 		wg.Wait()
-		cancel()
+		close(doneChan)
 	}()
 
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+	case <-doneChan:
+	}
 }
 
 // ServiceErrors returns all errors occurred in services
