@@ -218,6 +218,10 @@ func (c *Container) StartAll(ctx context.Context) error {
 	return nil
 }
 
+func (c *Container) IsRunning() bool {
+	return c.runCtx != nil
+}
+
 // StopAll gracefully stops all services.
 // If you need a timeout, passe a context with Timeout or Deadline
 func (c *Container) StopAll() {
