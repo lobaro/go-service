@@ -66,6 +66,8 @@ func (rc *runContext) wait() {
 // - Stop all services
 // If a single service fails during init or run, all services inside the container are stopped.
 type Container struct {
+	// name is used to optionally identify the container
+	name string
 	// Context in which all services are running
 	runCtx context.Context
 	// Cancel method of the runCtx, when called all services should stop
@@ -77,12 +79,25 @@ type Container struct {
 	shutdownCallbacks []func()
 }
 
-func NewContainer() *Container {
+type Option func(c *Container)
+
+func NewContainer(opts ...Option) *Container {
+
 	nopLogger := slog.New(NopHandler{})
-	return &Container{
+	c := &Container{
 		services:    make([]*serviceInfo, 0),
 		runContexts: map[string]*runContext{},
 		log:         nopLogger,
+	}
+	for _, o := range opts {
+		o(c)
+	}
+	return c
+}
+
+func WithName(name string) Option {
+	return func(c *Container) {
+		c.name = name
 	}
 }
 
@@ -91,8 +106,13 @@ var defaultContainer *Container
 func Default() *Container {
 	if defaultContainer == nil {
 		defaultContainer = NewContainer()
+		defaultContainer.name = "default"
 	}
 	return defaultContainer
+}
+
+func (c *Container) Name() string {
+	return c.name
 }
 
 func (c *Container) SetLogger(logger *slog.Logger) {
@@ -108,7 +128,7 @@ func (c *Container) Register(service Runner) {
 
 	for _, s := range c.services {
 		if s.name == name {
-			panic(fmt.Sprintf("Service '%s' already registered", name))
+			panic(fmt.Sprintf("Service '%s' already registered in container %s", name, c.name))
 		}
 	}
 
@@ -116,7 +136,7 @@ func (c *Container) Register(service Runner) {
 		name:    name,
 		service: service,
 	})
-	c.log.Info("Registered service", "name", name)
+	c.log.Info("Registered service", "name", name, "container", c.name)
 }
 
 func newRunContext(s *serviceInfo) *runContext {
@@ -130,14 +150,17 @@ func (c *Container) initOne(ctx context.Context, s *serviceInfo) error {
 	c.onInit(s)
 	runner := newRunContext(s)
 	if _, ok := c.runContexts[s.name]; ok {
-		return fmt.Errorf("service '%s' already started", s.name)
+		return fmt.Errorf("service '%s' already started in container '%s'", s.name, c.name)
 	}
 
 	c.runContexts[s.name] = runner
 
+	logger := c.log.With("name", s.name)
+	logger = logger.With("container", c.name)
+
 	// Execute initialization code if any
 	if initer, ok := s.service.(Initer); ok {
-		c.log.Info("Initializing service", "name", s.name)
+		logger.Info("Initializing service")
 		err := initer.Init(ctx)
 		if err != nil {
 			go func() {
@@ -145,10 +168,10 @@ func (c *Container) initOne(ctx context.Context, s *serviceInfo) error {
 				// The error is nil, since it is the "Run()" error
 				runner.done <- nil
 			}()
-			c.log.Debug("Failed to initialize service", "name", s.name, "error", err)
+			logger.Debug("Failed to initialize service", "error", err)
 			return fmt.Errorf("failed to init service %s: %w", s.name, err)
 		}
-		c.log.Info("Initialized service", "name", s.name)
+		logger.Info("Initialized service")
 	}
 
 	return nil
@@ -158,16 +181,17 @@ func (c *Container) runOne(ctx context.Context, s *serviceInfo) error {
 	c.onRun(s)
 	runner, ok := c.runContexts[s.name]
 	if !ok {
-		return fmt.Errorf("service '%s' not initialized", s.name)
+		return fmt.Errorf("service '%s' not initialized in container '%s'", s.name, c.name)
 	}
 	if runner.running {
-		return fmt.Errorf("service '%s' already running", s.name)
+		return fmt.Errorf("service '%s' already running in container '%s'", s.name, c.name)
 	}
 
 	// Execute the actual run method in background
 	runner.running = true
 	go func() {
 		logger := c.log.With("name", s.name)
+		logger = logger.With("container", c.name)
 		logger.Info("Starting service")
 		runErr := s.service.Run(ctx)
 		if runErr != nil {
@@ -301,7 +325,7 @@ func (c *Container) ServiceErrors() map[string]error {
 	errs := map[string]error{}
 	for _, rc := range c.runContexts {
 		if rc.err != nil {
-			errs[rc.service.name] = rc.err
+			errs[fmt.Sprintf("%s/%s", c.name, rc.service.name)] = rc.err
 		}
 	}
 	return errs
