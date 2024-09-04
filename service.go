@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type RunFunc func(ctx context.Context) error
@@ -240,6 +242,30 @@ func (c *Container) StartAll(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// WaitAllRunningTimeout blocks until all services are running or the context is canceled
+// NOTE: We want to introduce a version with context instead of the duration. But that needs some refactoring in current client
+// thus this will be deprecated in future and has the "Timeout" stated in the name
+func (c *Container) WaitAllRunningTimeout(timeout time.Duration) bool {
+	wg := sync.WaitGroup{}
+	allReady := atomic.Bool{}
+	// Assume all are ready, until one is not
+	allReady.Store(true)
+	for _, runCtx := range c.runningServices() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if waiter, ok := runCtx.service.service.(ReadyWaiter); ok {
+				ready := waiter.WaitReady(timeout)
+				if !ready {
+					allReady.Store(false)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	return allReady.Load()
 }
 
 func (c *Container) IsRunning() bool {
