@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     branches:
-      - master
+      - main
       - feature/**
       - update/**
       - fix/**
@@ -17,8 +17,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: "${{ github.workflow }}-${{ (github.ref_type == 'tag') && 'master' || github.ref_name }}"
-  cancel-in-progress: ${{ github.ref_type == 'tag' || github.ref_name != 'master' }}
+  group: "${{ github.workflow }}-${{ (github.ref_type == 'tag') && 'main' || github.ref_name }}"
+  cancel-in-progress: ${{ github.ref_type == 'tag' || github.ref_name != 'main' }}
 
 jobs:
   build:
