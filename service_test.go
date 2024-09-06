@@ -278,7 +278,7 @@ func TestStopWhenRunFails(t *testing.T) {
 	require.Len(t, c.ServiceErrors(), 1)
 	errs := c.ServiceErrors()
 
-	assert.NotNil(t, errs[s2.String()])
+	assert.NotNil(t, errs["/"+s2.String()])
 
 	assertServiceStartedAndStopped(t, s1)
 	assertServiceStartedAndStopped(t, s2)
@@ -316,7 +316,7 @@ func TestErrorOnShutdown(t *testing.T) {
 	require.Len(t, c.ServiceErrors(), 1)
 	errs := c.ServiceErrors()
 
-	assert.NotNil(t, errs[s2.String()])
+	assert.NotNil(t, errs["/"+s2.String()])
 
 	assertServiceStartedAndStopped(t, s1)
 	assertServiceStartedAndStopped(t, s2)
