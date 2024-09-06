@@ -27,21 +27,21 @@ jobs:
     env:
       CGO_ENABLED: 0
     services:
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-          cache: true
-      - name: install go dependencies
-        run: go mod download all
-      - name: go generate
-        run: go generate ./...
-      - name: Test
-        run: go test ./...
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+        - name: Set up Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: '1.23'
+            cache: true
+        - name: install go dependencies
+          run: go mod download all
+        - name: go generate
+          run: go generate ./...
+        - name: Test
+          run: go test ./...
 
-          # If a build fails due to a missing go.sum entry: Run `go mod tidy`, then `go mod download all` and commit the changes.
+            # If a build fails due to a missing go.sum entry: Run `go mod tidy`, then `go mod download all` and commit the changes.
           #build-go
-          
+
