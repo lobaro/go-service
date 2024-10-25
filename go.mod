@@ -1,4 +1,4 @@
-module github.com/niondir/go-service
+module github.com/lobaro/go-service
 
 go 1.23
 

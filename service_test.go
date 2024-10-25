@@ -3,7 +3,7 @@ package service_test
 import (
 	"context"
 	"fmt"
-	"github.com/niondir/go-service"
+	"github.com/lobaro/go-service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
