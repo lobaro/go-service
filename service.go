@@ -357,7 +357,7 @@ func (c *Container) WaitAllStoppedTimeout(timeout time.Duration) {
 		ctx, cancel = context.WithCancel(context.Background())
 	}
 	defer cancel()
-	return c.WaitAllStopped(ctx)
+	c.WaitAllStopped(ctx)
 }
 
 // ServiceErrors returns all errors occurred in services
