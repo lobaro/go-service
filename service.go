@@ -346,6 +346,20 @@ func (c *Container) WaitAllStopped(ctx context.Context) {
 	}
 }
 
+// WaitAllStoppedTimeout waits x seconds or until all services are stopped. Services might still run after the call! Call Container.StopAll() to stop them.
+// Deprecated: WaitAllStopped is the preferred method of Waiting for all stopped containers, it can take a context with a deadline/timeout for the same functionality.
+func (c *Container) WaitAllStoppedTimeout(timeout time.Duration) {
+	var ctx context.Context
+	var cancel context.CancelFunc
+	if timeout != 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+	}
+	defer cancel()
+	return c.WaitAllStopped(ctx)
+}
+
 // ServiceErrors returns all errors occurred in services
 func (c *Container) ServiceErrors() map[string]error {
 	errs := map[string]error{}
