@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime/pprof"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -192,18 +193,24 @@ func (c *Container) runOne(ctx context.Context, s *serviceInfo) error {
 	// Execute the actual run method in background
 	runner.running = true
 	go func() {
-		logger := c.log.With("name", s.name)
-		logger = logger.With("container", c.name)
-		logger.Info("Starting service")
-		runErr := s.service.Run(ctx)
-		if runErr != nil {
-			logger.Error("Service stopped with error", "error", runErr)
-		} else {
-			logger.Info("Service stopped")
-		}
-		runner.err = runErr
-		runner.running = false
-		close(runner.done)
+		var runErr error
+
+		pprof.Do(ctx, pprof.Labels("service_name", s.name, "service_container", c.name), func(ctx context.Context) {
+			logger := c.log.With("name", s.name, "container", c.name)
+			logger.Info("Starting service")
+
+			runErr = s.service.Run(ctx)
+			if runErr != nil {
+				logger.Error("Service stopped with error", "error", runErr)
+			} else {
+				logger.Info("Service stopped")
+			}
+
+			runner.err = runErr
+			runner.running = false
+			close(runner.done)
+		})
+
 		if runErr != nil {
 			c.StopAll()
 		}
