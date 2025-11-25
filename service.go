@@ -195,7 +195,7 @@ func (c *Container) runOne(ctx context.Context, s *serviceInfo) error {
 	go func() {
 		var runErr error
 
-		pprof.Do(ctx, pprof.Labels("service_name", s.name, "service_container", c.name), func(ctx context.Context) {
+		pprof.Do(ctx, pprof.Labels("go_service_name", s.name, "go_service_container", c.name), func(ctx context.Context) {
 			logger := c.log.With("name", s.name, "container", c.name)
 			logger.Info("Starting service")
 
