@@ -2,7 +2,7 @@ package service_test
 
 import (
 	"context"
-	"github.com/niondir/go-service"
+	"github.com/lobaro/go-service"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
